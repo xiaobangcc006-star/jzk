@@ -2099,7 +2099,7 @@
           labelCell("入院诊断", 2), textCell(p.diagnosis, 3),
           labelCell("单位/地址(联系电话)", 2), textCell(p.contact, 3)
         ],
-        [labelCell("来院方式", 2), textCell(ARRIVAL_MODES.map(item => `${item === p.arrivalMode ? "☑" : "□"} ${item}`).join("  "), 8, { fontSize: 13 })],
+        [labelCell("来院方式", 2), arrivalModesCell(p.arrivalMode, 8)],
         [
           timeLabelCell("处理完毕\n时间"), textCell(r.completeTime),
           timeLabelCell("出观\n时间"), textCell(r.outObservationTime),
@@ -2206,7 +2206,7 @@
         time: index === 0 ? record.time : "",
         medication: medicationLines.slice(index * linesPerCell, (index + 1) * linesPerCell).join("\n"),
         treatment: treatmentLines.slice(index * linesPerCell, (index + 1) * linesPerCell).join("\n"),
-        nurse: index === 0 ? record.nurse : ""
+        nurse: index === rowCount - 1 ? record.nurse : ""
       }));
     }
 
@@ -2333,6 +2333,10 @@
       return { text, colSpan, align: options.align || "left", fontSize: options.fontSize || 14, ...options };
     }
 
+    function arrivalModesCell(selected, colSpan = 1) {
+      return { arrivalModes: ARRIVAL_MODES, selected, colSpan, fontSize: 13 };
+    }
+
     function diagonalCellData(values, fontSize = 11, bold = false) {
       return { diagonal: values, fontSize, bold, align: "center" };
     }
@@ -2363,7 +2367,9 @@
       context.fillRect(x, y, width, height);
       context.strokeRect(x, y, width, height);
       context.fillStyle = "#000";
-      if (cell.diagonal) {
+      if (cell.arrivalModes) {
+        drawArrivalModesCell(context, x, y, width, height, cell);
+      } else if (cell.diagonal) {
         context.beginPath();
         context.moveTo(x, y + height);
         context.lineTo(x + width, y);
@@ -2374,6 +2380,38 @@
         drawWrappedText(context, cell.text || "", x, y, width, height, cell);
       }
       context.restore();
+    }
+
+    function drawArrivalModesCell(context, x, y, width, height, cell) {
+      const pad = 7;
+      const boxSize = 9;
+      const gap = 4;
+      const itemGap = 12;
+      const fontSize = cell.fontSize || 13;
+      let currentX = x + pad;
+      const boxY = y + (height - boxSize) / 2;
+      const textY = y + (height - fontSize) / 2 + fontSize;
+      setCanvasFont(context, fontSize, false, "serif");
+      context.strokeStyle = "#000";
+      context.fillStyle = "#000";
+      context.lineWidth = 1;
+      cell.arrivalModes.forEach(item => {
+        context.strokeRect(currentX, boxY, boxSize, boxSize);
+        if (item === cell.selected) {
+          context.save();
+          context.lineWidth = 1.2;
+          context.beginPath();
+          context.moveTo(currentX + 2, boxY + 5);
+          context.lineTo(currentX + 4, boxY + 7);
+          context.lineTo(currentX + 8, boxY + 2);
+          context.stroke();
+          context.restore();
+        }
+        context.textAlign = "left";
+        context.textBaseline = "alphabetic";
+        context.fillText(item, currentX + boxSize + gap, textY);
+        currentX += boxSize + gap + context.measureText(item).width + itemGap;
+      });
     }
 
     function drawWrappedText(context, text, x, y, width, height, options = {}) {
