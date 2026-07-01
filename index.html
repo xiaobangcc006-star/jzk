@@ -63,6 +63,10 @@
       padding-bottom: calc(152px + env(safe-area-inset-bottom));
     }
 
+    body.actions-collapsed .app {
+      padding-bottom: calc(28px + env(safe-area-inset-bottom));
+    }
+
     .topbar {
       position: sticky;
       top: 0;
@@ -330,6 +334,19 @@
       color: var(--ink);
     }
 
+    .template-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 8px;
+      padding: 8px 0;
+      border-top: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-all;
+    }
+
     .compact-nav {
       display: grid;
       gap: 8px;
@@ -401,6 +418,48 @@
       background: rgba(255, 255, 255, 0.97);
       box-shadow: 0 -8px 22px rgba(25, 39, 37, 0.12);
       backdrop-filter: blur(14px);
+    }
+
+    .bottom-actions.collapsed {
+      left: auto;
+      right: 12px;
+      bottom: calc(72px + env(safe-area-inset-bottom));
+      width: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .action-toggle {
+      position: absolute;
+      right: 12px;
+      top: -37px;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 850;
+      box-shadow: var(--shadow);
+    }
+
+    .bottom-actions.collapsed .action-toggle {
+      position: static;
+      width: 52px;
+      height: 52px;
+      border-color: var(--accent);
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(63, 95, 89, 0.24);
+    }
+
+    .bottom-actions.collapsed .action-grid {
+      display: none;
     }
 
     .action-grid {
@@ -830,13 +889,15 @@
         <button class="anchor-chip" data-view="consult" type="button">会诊检查</button>
         <button class="anchor-chip" data-view="vitals" type="button">生命体征</button>
         <button class="anchor-chip" data-view="records" type="button">用药处理</button>
+        <button class="anchor-chip" data-view="templates" type="button">模板库</button>
       </nav>
     </header>
 
     <main id="formRoot"></main>
   </div>
 
-  <div class="bottom-actions" role="toolbar" aria-label="记录单操作">
+  <div class="bottom-actions" id="bottomActions" role="toolbar" aria-label="记录单操作">
+    <button class="action-toggle" id="actionToggleBtn" type="button">收起</button>
     <div class="action-grid">
       <button class="action-btn save" id="saveBtn">保存</button>
       <button class="action-btn pdf" id="exportPdfBtn">导出图片</button>
@@ -899,6 +960,7 @@
       "患者因“呼吸心跳骤停”由外院救护车平车转入室。外院已予心肺复苏、气管插管、静脉通道建立及抢救用药等处理。入室后遵医嘱予心电监护、呼吸机辅助通气等对症处理。"
     ];
     const MEDICATIONS = [
+      "0.9%NS 250ml静脉滴注。",
       "盐酸肾上腺素注射液1mg静脉注射。",
       "5%GS48ml+盐酸异丙肾上腺素注射液1mg组液以__ml/h静脉微量泵入。",
       "5%GS46ml+重酒石酸去甲肾上腺素注射液8mg组液以__ml/h静脉微量泵入。",
@@ -936,16 +998,17 @@
       "0.9%NS100ml+注射用甲泼尼龙琥珀酸钠40mg组液静脉滴注。"
     ];
     const QUICK_MEDICATIONS = [
-      { label: "肾上腺素", value: MEDICATIONS[0] },
-      { label: "异丙肾泵", value: MEDICATIONS[1] },
-      { label: "去甲泵", value: MEDICATIONS[2] },
-      { label: "多巴胺泵", value: MEDICATIONS[3] },
-      { label: "间羟胺泵", value: MEDICATIONS[4] },
-      { label: "硝甘泵", value: MEDICATIONS[5] },
-      { label: "呋塞米", value: MEDICATIONS[6] },
-      { label: "胺碘酮150", value: MEDICATIONS[24] },
-      { label: "50%GS", value: MEDICATIONS[20] },
-      { label: "纳洛酮", value: MEDICATIONS[18] }
+      { label: "0.9%NS250", value: MEDICATIONS[0] },
+      { label: "肾上腺素", value: MEDICATIONS[1] },
+      { label: "异丙肾泵", value: MEDICATIONS[2] },
+      { label: "去甲泵", value: MEDICATIONS[3] },
+      { label: "多巴胺泵", value: MEDICATIONS[4] },
+      { label: "间羟胺泵", value: MEDICATIONS[5] },
+      { label: "硝甘泵", value: MEDICATIONS[6] },
+      { label: "呋塞米", value: MEDICATIONS[7] },
+      { label: "胺碘酮150", value: MEDICATIONS[25] },
+      { label: "50%GS", value: MEDICATIONS[21] },
+      { label: "纳洛酮", value: MEDICATIONS[19] }
     ];
     const TREATMENT_TEMPLATES = [
       "患者平车入室，神志不清，呼之不应，面色青紫，口唇发绀，颈动脉搏动未触及，自主呼吸未见，血压测不出，SpO₂测不出。双侧瞳孔散大，直径约__mm，对光反射消失/迟钝。院前已予胸外按压、球囊面罩辅助通气，带入静脉通道1条，固定尚可，液体滴入通畅。入室后立即置硬板床，持续胸外按压，予高流量氧气接球囊辅助通气，连接心电监护，遵医嘱开放静脉通道，抽血送检，抢救用药等对症处理。",
@@ -964,9 +1027,10 @@
     const TEMP_OPTIONS = buildNumberOptions(35, 42, 0.1, "℃");
     const PULSE_OPTIONS = ["测不出", "未测出", "40", "50", "60", "70", "80", "90", "100", "110", "120", "130", "140", "150"];
     const RESP_OPTIONS = ["辅助通气", "无创面罩", "简易呼吸器辅助通气", "呼吸机辅助通气", "测不出", "12", "16", "18", "20", "24", "30", "35", "40"];
-    const BP_OPTIONS = ["测不出", "未测出", ...buildIntegerOptions(40, 260, 5)];
+    const BP_OPTIONS = ["测不出"];
     const BP_DIASTOLIC_OPTIONS = ["测不出"];
     const SPO2_OPTIONS = ["测不出", "未测出", "70", "75", "80", "85", "90", "92", "95", "98", "100"];
+    const PUPIL_OPTIONS = ["", ...buildNumberOptions(1, 8, 0.5, "")];
     const CONSCIOUSNESS_OPTIONS = [
       ["清醒", "√"],
       ["嗜睡", "△"],
@@ -984,7 +1048,8 @@
       brief: "简要病情",
       consult: "会诊检查",
       vitals: "生命体征",
-      records: "用药处理"
+      records: "用药处理",
+      templates: "模板库"
     };
 
     let state = loadState();
@@ -998,12 +1063,15 @@
     const printArea = document.getElementById("printArea");
     const imageExportSheet = document.getElementById("imageExportSheet");
     const imageExportList = document.getElementById("imageExportList");
+    const bottomActions = document.getElementById("bottomActions");
+    const actionToggleBtn = document.getElementById("actionToggleBtn");
 
     init();
 
     function init() {
       render();
       bindEvents();
+      applyActionsCollapsed();
       updateStatus(meta.dirty ? "未保存" : "已恢复");
     }
 
@@ -1037,7 +1105,16 @@
           { department: "", item: "", checkTime: "", returnTime: "" }
         ],
         vitals: [defaultVital()],
-        records: [defaultRecord()]
+        records: [defaultRecord()],
+        templateLibrary: defaultTemplateLibrary()
+      };
+    }
+
+    function defaultTemplateLibrary(base = {}) {
+      return {
+        brief: Array.isArray(base.brief) ? base.brief : [],
+        medication: Array.isArray(base.medication) ? base.medication : [],
+        treatment: Array.isArray(base.treatment) ? base.treatment : []
       };
     }
 
@@ -1109,6 +1186,7 @@
       document.getElementById("restoreStepBtn").addEventListener("click", restoreStep);
       document.getElementById("restoreAllBtn").addEventListener("click", restoreAll);
       document.getElementById("closeImageExportBtn").addEventListener("click", closeImageExport);
+      actionToggleBtn.addEventListener("click", toggleActionsCollapsed);
       window.addEventListener("beforeprint", () => renderPrintArea());
     }
 
@@ -1119,6 +1197,7 @@
         ${renderView("consult", renderConsultPanel())}
         ${renderView("vitals", renderVitalsPanel())}
         ${renderView("records", renderRecordsPanel())}
+        ${renderView("templates", renderTemplatesPanel())}
         ${renderDatalists()}
       `;
       updateNavState();
@@ -1210,7 +1289,7 @@
             <label class="label" for="briefTemplate">常用模板</label>
             <select id="briefTemplate">
               <option value="">选择后追加到下方</option>
-              ${BRIEF_TEMPLATES.map(item => `<option value="${attr(item)}">${escapeHtml(item)}</option>`).join("")}
+              ${templateOptions("brief").map(item => `<option value="${attr(item)}">${escapeHtml(item)}</option>`).join("")}
             </select>
             <div class="quick-row">
               <button class="small-btn blue" data-action="append-brief">追加模板</button>
@@ -1313,9 +1392,9 @@
                   ${field("SPO2", `vitals.${index}.spo2`, "text", row.spo2, "", "测不出或数字", "spo2List")}
                   ${selectPairField("意识", `vitals.${index}.consciousness`, row.consciousness, CONSCIOUSNESS_OPTIONS)}
                   ${field("GCS评分", `vitals.${index}.gcs`, "text", row.gcs)}
-                  ${field("左瞳孔(mm)", `vitals.${index}.leftPupil`, "text", row.leftPupil)}
+                  ${selectField("左瞳孔(mm)", `vitals.${index}.leftPupil`, row.leftPupil, PUPIL_OPTIONS)}
                   ${selectPairField("左对光反射", `vitals.${index}.leftReflect`, row.leftReflect, REFLEX_OPTIONS)}
-                  ${field("右瞳孔(mm)", `vitals.${index}.rightPupil`, "text", row.rightPupil)}
+                  ${selectField("右瞳孔(mm)", `vitals.${index}.rightPupil`, row.rightPupil, PUPIL_OPTIONS)}
                   ${selectPairField("右对光反射", `vitals.${index}.rightReflect`, row.rightReflect, REFLEX_OPTIONS)}
                   ${field("尿量(ml)", `vitals.${index}.urine`, "text", row.urine)}
                   ${field("指尖血糖(mmol/L)", `vitals.${index}.glucose`, "text", row.glucose)}
@@ -1362,7 +1441,7 @@
                     <label class="label" for="treatmentTemplate${index}">病情及处理模板</label>
                     <select id="treatmentTemplate${index}" data-template-select="${index}">
                       <option value="">选择后追加到处理记录</option>
-                      ${TREATMENT_TEMPLATES.map(item => `<option value="${attr(item)}">${escapeHtml(item)}</option>`).join("")}
+                      ${templateOptions("treatment").map(item => `<option value="${attr(item)}">${escapeHtml(item)}</option>`).join("")}
                     </select>
                     <div class="quick-row">
                       <button class="small-btn blue" data-action="append-treatment" data-index="${index}">追加模板</button>
@@ -1379,13 +1458,73 @@
       `;
     }
 
+    function renderTemplatesPanel() {
+      return `
+        <section class="panel" id="templatePanel">
+          <div class="panel-head">
+            <h2 class="panel-title">模板库</h2>
+            <span class="panel-note">自动识别或手动分类</span>
+          </div>
+          <div class="panel-body stack">
+            <div class="row-card">
+              <div class="form-grid two">
+                <div class="field full">
+                  <label class="label" for="templateLibraryText">新增模板内容</label>
+                  <textarea id="templateLibraryText" placeholder="粘贴简要病情、用药内容或病情及处理模板。"></textarea>
+                </div>
+                <div class="field">
+                  <label class="label" for="templateLibraryType">模板分类</label>
+                  <select id="templateLibraryType">
+                    <option value="auto">自动识别</option>
+                    <option value="brief">简要病情</option>
+                    <option value="medication">用药内容</option>
+                    <option value="treatment">病情及处理</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label">加入模板库</label>
+                  <button class="small-btn primary" data-action="add-template" type="button">添加模板</button>
+                </div>
+              </div>
+              <div class="quick-row wrap">
+                <button class="small-btn blue" data-action="save-current-template" data-template-type="brief" type="button">保存当前简要病情</button>
+                <button class="small-btn blue" data-action="save-current-template" data-template-type="medication" type="button">保存当前用药内容</button>
+                <button class="small-btn blue" data-action="save-current-template" data-template-type="treatment" type="button">保存当前病情处理</button>
+              </div>
+            </div>
+            ${renderTemplateGroup("brief", "简要病情模板")}
+            ${renderTemplateGroup("medication", "用药内容模板")}
+            ${renderTemplateGroup("treatment", "病情及处理模板")}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderTemplateGroup(type, title) {
+      const items = getTemplateLibrary()[type] || [];
+      return `
+        <div class="row-card">
+          <div class="row-head">
+            <div class="row-title">${title}</div>
+            <span class="count-pill">${items.length} 条</span>
+          </div>
+          ${items.length ? items.map((item, index) => `
+            <div class="template-item">
+              <div>${escapeHtml(item)}</div>
+              <button class="small-btn red" data-action="delete-template" data-template-type="${type}" data-index="${index}" type="button">删除</button>
+            </div>
+          `).join("") : `<p class="helper">暂无自定义模板。</p>`}
+        </div>
+      `;
+    }
+
     function renderMedicationField(index, row) {
       return `
         <div class="field full">
           <label class="label" for="medicationTemplate${index}">用药模板</label>
           <select id="medicationTemplate${index}" data-medication-template="${index}">
             <option value="">选择后追加到用药内容</option>
-            ${MEDICATIONS.map(item => `<option value="${attr(item)}">${escapeHtml(item)}</option>`).join("")}
+            ${templateOptions("medication").map(item => `<option value="${attr(item)}">${escapeHtml(item)}</option>`).join("")}
           </select>
           <div class="quick-row">
             <button class="small-btn blue" data-action="append-medication" data-index="${index}" type="button">追加用药模板</button>
@@ -1486,6 +1625,95 @@
       return `<datalist id="${id}">${options.map(item => `<option value="${attr(item)}"></option>`).join("")}</datalist>`;
     }
 
+    function getTemplateLibrary() {
+      state.templateLibrary = defaultTemplateLibrary(state.templateLibrary);
+      return state.templateLibrary;
+    }
+
+    function templateOptions(type) {
+      const base = {
+        brief: BRIEF_TEMPLATES,
+        medication: MEDICATIONS,
+        treatment: TREATMENT_TEMPLATES
+      }[type] || [];
+      return uniqueList([...base, ...(getTemplateLibrary()[type] || [])]);
+    }
+
+    function uniqueList(items) {
+      const seen = new Set();
+      return items.map(item => String(item || "").trim()).filter(item => {
+        if (!item || seen.has(item)) return false;
+        seen.add(item);
+        return true;
+      });
+    }
+
+    function inferTemplateType(text) {
+      const value = String(text || "");
+      if (/(注射液|注射用|静脉注射|静脉滴注|肌内注射|缓慢静脉注射|泵入|组液|mg|ml|GS|NS|葡萄糖|肾上腺素|胺碘酮|呋塞米)/i.test(value)) return "medication";
+      if (/(遵医嘱|协助医生|留置|床旁|宣告|尸体|告病危|签署|结果已告知|抢救用药|心肺复苏术|呼吸机)/.test(value)) return "treatment";
+      return "brief";
+    }
+
+    function addTemplateFromPanel() {
+      const textarea = document.getElementById("templateLibraryText");
+      const select = document.getElementById("templateLibraryType");
+      const text = textarea ? textarea.value.trim() : "";
+      if (!text) {
+        showToast("请先填写模板内容");
+        return;
+      }
+      const selected = select ? select.value : "auto";
+      const type = selected === "auto" ? inferTemplateType(text) : selected;
+      addTemplateToLibrary(type, text);
+      if (textarea) textarea.value = "";
+    }
+
+    function addTemplateToLibrary(type, text) {
+      const value = String(text || "").trim();
+      if (!value) {
+        showToast("模板内容为空");
+        return;
+      }
+      const library = getTemplateLibrary();
+      if (!library[type]) type = inferTemplateType(value);
+      if (templateOptions(type).includes(value)) {
+        showToast("模板已存在");
+        return;
+      }
+      library[type].push(value);
+      meta.lastEdit = { type: "field", path: `templateLibrary.${type}` };
+      markDirty();
+      saveState(true);
+      render();
+      showToast(`已加入${templateTypeLabel(type)}`);
+    }
+
+    function deleteTemplate(type, index) {
+      const library = getTemplateLibrary();
+      if (!library[type] || !library[type][index]) return;
+      const [value] = library[type].splice(index, 1);
+      meta.lastClearedStep = { type: "field", path: `templateLibrary.${type}`, value };
+      markDirty();
+      saveState(true);
+      render();
+      showToast("已删除模板");
+    }
+
+    function saveCurrentTemplate(type) {
+      const record = state.records[getActiveIndex("records")] || defaultRecord();
+      const value = {
+        brief: state.briefCondition,
+        medication: record.medication,
+        treatment: record.treatment
+      }[type];
+      addTemplateToLibrary(type, value);
+    }
+
+    function templateTypeLabel(type) {
+      return { brief: "简要病情模板库", medication: "用药内容模板库", treatment: "病情及处理模板库" }[type] || "模板库";
+    }
+
     function appendMedicationTemplate(index) {
       const select = document.querySelector(`[data-medication-template="${index}"]`);
       const value = select ? select.value : "";
@@ -1564,6 +1792,9 @@
       if (action === "delete-row") deleteRow(button.dataset.collection, Number(button.dataset.index));
       if (action === "append-treatment") appendTreatment(Number(button.dataset.index));
       if (action === "append-medication") appendMedicationTemplate(Number(button.dataset.index));
+      if (action === "add-template") addTemplateFromPanel();
+      if (action === "delete-template") deleteTemplate(button.dataset.templateType, Number(button.dataset.index));
+      if (action === "save-current-template") saveCurrentTemplate(button.dataset.templateType);
       if (action === "prev-row") moveActiveRow(button.dataset.collection, -1);
       if (action === "next-row") moveActiveRow(button.dataset.collection, 1);
       if (action === "select-medication") selectMedication(Number(button.dataset.index), button.dataset.medication);
@@ -1599,7 +1830,7 @@
 
     function addVital() {
       const previous = state.vitals[state.vitals.length - 1] || defaultVital();
-      const next = defaultVital({ ...previous, time: nowTime() });
+      const next = defaultVital({ ...previous, time: nowTime(), temp: "", pulse: "", respiration: "", spo2: "" });
       addRow("vitals", next);
     }
 
@@ -1849,48 +2080,45 @@
       const r = state.rescueTimes;
       const x = 36;
       const w = 722;
+      const topCols = [56, 78, 58, 108, 58, 50, 58, 52, 58, 146];
       drawCanvasHeader(context, assets, 18);
-      drawCenteredText(context, "急诊抢救记录单", 397, 100, 28, true, "serif");
-      drawTextLine(context, `入院时间：${formatDateTimeParts(p.admissionDateTime)}`, x, 128, 14, false, "left");
-      drawTextLine(context, `首诊医生：${p.firstDoctor || ""}`, 397, 128, 14, false, "center");
-      drawTextLine(context, `医师到诊时间：${p.doctorArrivalTime || ""}`, x + w, 128, 14, false, "right");
+      drawCenteredText(context, "急 诊 抢 救 记 录 单", 397, 104, 26, true, "serif");
+      drawTextLine(context, `入院时间：${formatDateTimeParts(p.admissionDateTime)}`, x, 132, 14, false, "left");
+      drawTextLine(context, `首诊医生：${p.firstDoctor || ""}`, 397, 132, 14, false, "center");
+      drawTextLine(context, `医师到诊时间：${p.doctorArrivalTime || ""}`, x + w, 132, 14, false, "right");
 
-      drawTable(context, x, 140, [86, 145, 78, 86, 96, 231], [30, 32, 42, 30, 34, 34, 74], [
+      drawTable(context, x, 144, topCols, [30, 44, 32, 48, 90], [
         [
           labelCell("床号"), textCell(p.bedNo),
           labelCell("姓名"), textCell(p.name),
-          labelCell("性别"), textCell(p.sex)
-        ],
-        [
+          labelCell("性别"), textCell(p.sex),
           labelCell("年龄"), textCell(p.age),
-          labelCell("ID号"), textCell(p.idNo, 3)
+          labelCell("ID号"), textCell(p.idNo)
         ],
         [
-          labelCell("入院诊断"), textCell(p.diagnosis, 2),
-          labelCell("单位/地址(联系电话)"), textCell(p.contact, 2)
+          labelCell("入院诊断", 2), textCell(p.diagnosis, 3),
+          labelCell("单位/地址(联系电话)", 2), textCell(p.contact, 3)
         ],
-        [labelCell("来院方式"), textCell(ARRIVAL_MODES.map(item => `${item === p.arrivalMode ? "☑" : "□"} ${item}`).join("  "), 5)],
+        [labelCell("来院方式", 2), textCell(ARRIVAL_MODES.map(item => `${item === p.arrivalMode ? "☑" : "□"} ${item}`).join("  "), 8, { fontSize: 13 })],
         [
           labelCell("处理完毕时间"), textCell(r.completeTime),
           labelCell("出观时间"), textCell(r.outObservationTime),
-          labelCell("送手术时间"), textCell(r.operationTime)
-        ],
-        [
+          labelCell("送手术时间"), textCell(r.operationTime),
           labelCell("死亡时间"), textCell(r.deathTime),
-          labelCell("尸体处理时间"), textCell(r.bodyCareTime, 3)
+          labelCell("尸体处理时间"), textCell(r.bodyCareTime)
         ],
-        [textCell(`简要病情记录：${state.briefCondition || ""}`, 6, { align: "left", bold: false, fontSize: 13, pad: 6 })]
+        [textCell(`简要病情记录：${state.briefCondition || ""}`, 10, { align: "left", bold: false, fontSize: 14, pad: 6 })]
       ]);
 
-      drawTable(context, x, 416, Array(8).fill(w / 8), [30, 28, 30, 30, 30, 30, 30], [
+      drawTable(context, x, 388, Array(8).fill(w / 8), [30, 28, 30, 30, 30, 30, 30], [
         [labelCell("会 诊 情 况", 4, { fontSize: 16 }), labelCell("辅 助 检 查", 4, { fontSize: 16 })],
         ["会诊科室", "通知时间", "会诊时间", "会诊医生", "科室", "检查项目", "检查时间", "回科时间"].map(item => labelCell(item, 1, { fontSize: 13 })),
         ...canvasConsultExamRows().map(row => row.map(item => textCell(item, 1, { align: "center", fontSize: 13 })))
       ]);
 
-      drawVitalsCanvasTable(context, x, 624, w, vitals);
-      drawCenteredText(context, "神志：清醒√　嗜睡△　意识模糊+　浅昏迷++　深昏迷+++　　瞳孔对光反射：灵敏+　迟钝±　消失-", 397, 1054, 13, false, "serif");
-      drawCenteredText(context, `第 ${pageNo} 页`, 397, 1084, 14, false, "serif");
+      drawVitalsCanvasTable(context, x, 600, w, vitals);
+      drawCenteredText(context, "神志：清醒√　嗜睡△　意识模糊+　浅昏迷++　深昏迷+++　　瞳孔对光反射：灵敏+　迟钝±　消失-", 397, 1040, 13, false, "serif");
+      drawCenteredText(context, `第 ${pageNo} 页`, 397, 1070, 14, false, "serif");
     }
 
     function drawVitalsCanvasPage(context, assets, vitals, pageNo) {
@@ -2402,6 +2630,19 @@
       statusEl.textContent = text;
     }
 
+    function toggleActionsCollapsed() {
+      meta.actionsCollapsed = !meta.actionsCollapsed;
+      localStorage.setItem(META_KEY, JSON.stringify(meta));
+      applyActionsCollapsed();
+    }
+
+    function applyActionsCollapsed() {
+      const collapsed = Boolean(meta.actionsCollapsed);
+      bottomActions.classList.toggle("collapsed", collapsed);
+      document.body.classList.toggle("actions-collapsed", collapsed);
+      actionToggleBtn.textContent = collapsed ? "操作" : "收起";
+    }
+
     function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -2415,10 +2656,10 @@
       try {
         const raw = localStorage.getItem(META_KEY);
         return raw
-          ? { dirty: false, lastEdit: null, lastClearedStep: null, lastClearedAll: null, activeView: "patient", activeVitalIndex: 0, activeRecordIndex: 0, ...JSON.parse(raw) }
-          : { dirty: false, lastEdit: null, lastClearedStep: null, lastClearedAll: null, activeView: "patient", activeVitalIndex: 0, activeRecordIndex: 0 };
+          ? { dirty: false, lastEdit: null, lastClearedStep: null, lastClearedAll: null, activeView: "patient", activeVitalIndex: 0, activeRecordIndex: 0, actionsCollapsed: false, ...JSON.parse(raw) }
+          : { dirty: false, lastEdit: null, lastClearedStep: null, lastClearedAll: null, activeView: "patient", activeVitalIndex: 0, activeRecordIndex: 0, actionsCollapsed: false };
       } catch {
-        return { dirty: false, lastEdit: null, lastClearedStep: null, lastClearedAll: null, activeView: "patient", activeVitalIndex: 0, activeRecordIndex: 0 };
+        return { dirty: false, lastEdit: null, lastClearedStep: null, lastClearedAll: null, activeView: "patient", activeVitalIndex: 0, activeRecordIndex: 0, actionsCollapsed: false };
       }
     }
 
@@ -2429,6 +2670,7 @@
       merged.exams = Array.isArray(raw?.exams) && raw.exams.length ? raw.exams.map(defaultExam) : base.exams;
       merged.vitals = Array.isArray(raw?.vitals) && raw.vitals.length ? raw.vitals.map(defaultVital) : base.vitals;
       merged.records = Array.isArray(raw?.records) && raw.records.length ? raw.records.map(defaultRecord) : base.records;
+      merged.templateLibrary = defaultTemplateLibrary(raw?.templateLibrary);
       return merged;
     }
 
