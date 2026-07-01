@@ -1025,11 +1025,11 @@
     ];
     const EXAM_ITEMS = ["床旁心电图", "血气分析", "血常规", "生化", "凝血功能", "肌钙蛋白", "床旁超声", "CT", "DR"];
     const TEMP_OPTIONS = buildNumberOptions(35, 42, 0.1, "℃");
-    const PULSE_OPTIONS = ["测不出"];
-    const RESP_OPTIONS = ["辅助通气", "无创面罩", "测不出"];
-    const BP_OPTIONS = ["测不出"];
-    const BP_DIASTOLIC_OPTIONS = ["测不出"];
-    const SPO2_OPTIONS = ["测不出", "0"];
+    const PULSE_OPTIONS = ["测不出", "0"];
+    const RESP_OPTIONS = ["辅助通气", "无创面罩", "0"];
+    const BP_OPTIONS = ["测不出", "0"];
+    const BP_DIASTOLIC_OPTIONS = ["测不出", "0"];
+    const SPO2_OPTIONS = ["测不出", "未测出", "70", "75", "80", "85", "90", "92", "95", "98", "100"];
     const PUPIL_OPTIONS = ["", ...buildNumberOptions(1, 8, 0.5, "")];
     const CONSCIOUSNESS_OPTIONS = [
       ["清醒", "√"],
@@ -1386,8 +1386,8 @@
                 <div class="form-grid two three">
                   ${field("时间", `vitals.${index}.time`, "time", row.time)}
                   ${field("体温", `vitals.${index}.temp`, "text", row.temp, "", "例：36.5℃", "tempList")}
-                  ${field("脉搏", `vitals.${index}.pulse`, "text", row.pulse, "", "测不出或数字", "pulseList")}
-                  ${field("呼吸", `vitals.${index}.respiration`, "text", row.respiration, "", "辅助通气/数字", "respList")}
+                  ${field("脉搏", `vitals.${index}.pulse`, "text", row.pulse, "", "测不出/0", "pulseList")}
+                  ${field("呼吸", `vitals.${index}.respiration`, "text", row.respiration, "", "辅助通气/无创面罩/0", "respList")}
                   ${renderBloodPressureFields(index, row)}
                   ${field("SPO2", `vitals.${index}.spo2`, "text", row.spo2, "", "测不出或数字", "spo2List")}
                   ${selectPairField("意识", `vitals.${index}.consciousness`, row.consciousness, CONSCIOUSNESS_OPTIONS)}
@@ -1568,7 +1568,7 @@
       return `
         <div>
           <label class="mini-label" for="vitals_${index}_${idSuffix}">${label}</label>
-          <input id="vitals_${index}_${idSuffix}" type="text" inputmode="numeric" data-path="vitals.${index}.${key}" value="${attr(value)}" placeholder="测不出或数字" list="${listId}">
+          <input id="vitals_${index}_${idSuffix}" type="text" inputmode="numeric" data-path="vitals.${index}.${key}" value="${attr(value)}" placeholder="测不出/0" list="${listId}">
         </div>
       `;
     }
@@ -2087,7 +2087,7 @@
       drawTextLine(context, `首诊医生：${p.firstDoctor || ""}`, 397, 132, 14, false, "center");
       drawTextLine(context, `医师到诊时间：${p.doctorArrivalTime || ""}`, x + w, 132, 14, false, "right");
 
-      drawTable(context, x, 144, topCols, [30, 44, 32, 48, 90], [
+      drawTable(context, x, 144, topCols, [30, 44, 32, 48], [
         [
           labelCell("床号"), textCell(p.bedNo),
           labelCell("姓名"), textCell(p.name),
@@ -2101,24 +2101,29 @@
         ],
         [labelCell("来院方式", 2), textCell(ARRIVAL_MODES.map(item => `${item === p.arrivalMode ? "☑" : "□"} ${item}`).join("  "), 8, { fontSize: 13 })],
         [
-          labelCell("处理完毕时间"), textCell(r.completeTime),
-          labelCell("出观时间"), textCell(r.outObservationTime),
-          labelCell("送手术时间"), textCell(r.operationTime),
-          labelCell("死亡时间"), textCell(r.deathTime),
-          labelCell("尸体处理时间"), textCell(r.bodyCareTime)
-        ],
-        [textCell(`简要病情记录：${state.briefCondition || ""}`, 10, { align: "left", bold: false, fontSize: 14, pad: 6 })]
+          timeLabelCell("处理完毕\n时间"), textCell(r.completeTime),
+          timeLabelCell("出观\n时间"), textCell(r.outObservationTime),
+          timeLabelCell("送手术\n时间"), textCell(r.operationTime),
+          timeLabelCell("死亡\n时间"), textCell(r.deathTime),
+          timeLabelCell("尸体处理\n时间"), textCell(r.bodyCareTime)
+        ]
       ]);
 
-      drawTable(context, x, 388, Array(8).fill(w / 8), [30, 28, 30, 30, 30, 30, 30], [
+      const briefY = 298;
+      const briefRows = canvasBriefRows(context, state.briefCondition, w);
+      drawBriefCanvasTable(context, x, briefY, w, briefRows);
+
+      const consultY = briefY + 34 + Math.max(0, briefRows.length - 1) * 28;
+      drawTable(context, x, consultY, Array(8).fill(w / 8), [30, 28, 30, 30, 30, 30, 30], [
         [labelCell("会 诊 情 况", 4, { fontSize: 16 }), labelCell("辅 助 检 查", 4, { fontSize: 16 })],
         ["会诊科室", "通知时间", "会诊时间", "会诊医生", "科室", "检查项目", "检查时间", "回科时间"].map(item => labelCell(item, 1, { fontSize: 13 })),
         ...canvasConsultExamRows().map(row => row.map(item => textCell(item, 1, { align: "center", fontSize: 13 })))
       ]);
 
-      drawVitalsCanvasTable(context, x, 600, w, vitals);
-      drawCenteredText(context, "神志：清醒√　嗜睡△　意识模糊+　浅昏迷++　深昏迷+++　　瞳孔对光反射：灵敏+　迟钝±　消失-", 397, 1040, 13, false, "serif");
-      drawCenteredText(context, `第 ${pageNo} 页`, 397, 1070, 14, false, "serif");
+      const vitalsY = consultY + 212;
+      drawVitalsCanvasTable(context, x, vitalsY, w, vitals);
+      drawCenteredText(context, "神志：清醒√　嗜睡△　意识模糊+　浅昏迷++　深昏迷+++　　瞳孔对光反射：灵敏+　迟钝±　消失-", 397, Math.min(1080, vitalsY + 440), 13, false, "serif");
+      drawCenteredText(context, `第 ${pageNo} 页`, 397, Math.min(1108, vitalsY + 470), 14, false, "serif");
     }
 
     function drawVitalsCanvasPage(context, assets, vitals, pageNo) {
@@ -2127,6 +2132,39 @@
       drawVitalsCanvasTable(context, 36, 150, 722, vitals);
       drawCenteredText(context, "神志：清醒√　嗜睡△　意识模糊+　浅昏迷++　深昏迷+++　　瞳孔对光反射：灵敏+　迟钝±　消失-", 397, 574, 13, false, "serif");
       drawCenteredText(context, `第 ${pageNo} 页`, 397, 1084, 14, false, "serif");
+    }
+
+    function canvasBriefRows(context, text, width) {
+      const cleaned = String(text || "").replace(/^[\s\u3000\u200B-\u200D\uFEFF]+/, "");
+      const rows = wrapBriefCanvasTextLines(context, cleaned, width);
+      while (rows.length > 1 && !String(rows[0] || "").trim()) rows.shift();
+      while (rows.length < 3) rows.push("");
+      return rows;
+    }
+
+    function drawBriefCanvasTable(context, x, y, width, rows) {
+      const prefix = "简要病情记录：";
+      const pad = 7;
+      const firstRowHeight = 34;
+      const contentFontSize = 14;
+      context.save();
+      context.fillStyle = "#fff";
+      context.fillRect(x, y, width, firstRowHeight);
+      context.strokeStyle = "#000";
+      context.lineWidth = 1;
+      context.strokeRect(x, y, width, firstRowHeight);
+      drawTextLine(context, prefix, x + pad, y + (firstRowHeight - 19) / 2 + 19, 19, true, "left", "serif");
+      setCanvasFont(context, 19, true, "serif");
+      const prefixWidth = context.measureText(prefix).width + 6;
+      drawTextLine(context, rows[0] || "", x + pad + prefixWidth, y + (firstRowHeight - contentFontSize) / 2 + contentFontSize, contentFontSize, false, "left", "serif");
+      context.restore();
+
+      const bodyRows = rows.slice(1);
+      if (bodyRows.length) {
+        drawTable(context, x, y + firstRowHeight, [width], bodyRows.map(() => 28), bodyRows.map(line => [
+          textCell(line, 1, { align: "left", fontSize: contentFontSize, pad, lineHeight: 18 })
+        ]));
+      }
     }
 
     function drawRecordCanvasPage(context, records, pageNo) {
@@ -2177,6 +2215,37 @@
       const fontSize = options.fontSize || 13;
       const lineHeight = options.lineHeight || Math.ceil(fontSize * 1.28);
       return Math.max(1, Math.floor((height - pad * 2) / lineHeight));
+    }
+
+    function wrapBriefCanvasTextLines(context, text, width) {
+      const prefix = "简要病情记录：";
+      const pad = 7;
+      const fontSize = 14;
+      setCanvasFont(context, 19, true, "serif");
+      const prefixWidth = context.measureText(prefix).width + 6;
+      setCanvasFont(context, fontSize, false, "serif");
+      const firstWidth = width - pad * 2 - prefixWidth;
+      const fullWidth = width - pad * 2;
+      const lines = [];
+      String(text || "").split("\n").forEach(part => {
+        if (!part) {
+          if (lines.length) lines.push("");
+          return;
+        }
+        let line = "";
+        Array.from(part).forEach(char => {
+          const availableWidth = lines.length ? fullWidth : firstWidth;
+          const next = line + char;
+          if (line && context.measureText(next).width > availableWidth) {
+            lines.push(line);
+            line = char;
+          } else {
+            line = next;
+          }
+        });
+        lines.push(line);
+      });
+      return lines.filter((line, index) => line || index === 0);
     }
 
     function wrapCanvasTextLines(context, text, width, options = {}) {
@@ -2256,6 +2325,10 @@
       return { text, colSpan, label: true, align: "center", bold: true, fontSize: options.fontSize || 14, ...options };
     }
 
+    function timeLabelCell(text) {
+      return labelCell(text, 1, { fontSize: 13, lineHeight: 16, pad: 1, valign: "middle" });
+    }
+
     function textCell(text, colSpan = 1, options = {}) {
       return { text, colSpan, align: options.align || "left", fontSize: options.fontSize || 14, ...options };
     }
@@ -2331,7 +2404,8 @@
         visible[visible.length - 1] = `${last}...`;
       }
       const totalHeight = visible.length * lineHeight;
-      const startY = options.valign === "top" || visible.length > 1 ? y + pad + fontSize : y + (height - totalHeight) / 2 + fontSize;
+      const middleAligned = options.valign === "middle" || options.valign === "center";
+      const startY = options.valign === "top" || (!middleAligned && visible.length > 1) ? y + pad + fontSize : y + (height - totalHeight) / 2 + fontSize;
       context.textAlign = options.align || "left";
       context.textBaseline = "alphabetic";
       visible.forEach((line, index) => {
@@ -2666,12 +2740,24 @@
     function sanitizeState(raw) {
       const base = defaultState();
       const merged = deepMerge(base, raw || {});
+      merged.patient.arrivalMode = normalizeArrivalMode(merged.patient.arrivalMode);
       merged.consults = Array.isArray(raw?.consults) && raw.consults.length ? raw.consults.map(defaultConsult) : base.consults;
       merged.exams = Array.isArray(raw?.exams) && raw.exams.length ? raw.exams.map(defaultExam) : base.exams;
       merged.vitals = Array.isArray(raw?.vitals) && raw.vitals.length ? raw.vitals.map(defaultVital) : base.vitals;
       merged.records = Array.isArray(raw?.records) && raw.records.length ? raw.records.map(defaultRecord) : base.records;
       merged.templateLibrary = defaultTemplateLibrary(raw?.templateLibrary);
       return merged;
+    }
+
+    function normalizeArrivalMode(value) {
+      const map = {
+        "急诊门诊转入": "急门转入",
+        "急诊门诊": "急门转入",
+        "朋友/家属陪同": "家属朋友",
+        "朋友家属陪同": "家属朋友",
+        "朋友/家属": "家属朋友"
+      };
+      return map[value] || value || "120";
     }
 
     function deepMerge(base, incoming) {
