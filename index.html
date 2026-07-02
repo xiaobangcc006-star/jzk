@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <link rel="icon" href="data:,">
   <title>急诊抢救记录单</title>
   <style>
@@ -30,18 +30,25 @@
     }
 
     html {
+      width: 100%;
       min-height: 100%;
       background: var(--bg);
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
       line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
     }
 
     body {
+      width: 100%;
       margin: 0;
       min-height: 100dvh;
       background: var(--bg);
       color: var(--ink);
+      overflow-x: hidden;
+      touch-action: pan-y;
     }
 
     button,
@@ -318,7 +325,7 @@
       border-radius: 8px;
       background: #fff;
       color: var(--ink);
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       line-height: 1.2;
       outline: none;
@@ -1182,10 +1189,10 @@
     const EXAM_ITEMS = ["床旁心电图", "血气分析", "血常规", "生化", "凝血功能", "肌钙蛋白", "床旁超声", "CT", "DR"];
     const TEMP_OPTIONS = buildNumberOptions(35, 42, 0.1, "℃");
     const PULSE_OPTIONS = ["测不出", "0"];
-    const RESP_OPTIONS = ["测不出", "辅助通气", "无创面罩", "0"];
+    const RESP_OPTIONS = ["辅助通气", "无创面罩", "0"];
     const BP_OPTIONS = ["测不出", "0"];
     const BP_DIASTOLIC_OPTIONS = ["测不出", "0"];
-    const SPO2_OPTIONS = ["测不出", "0"];
+    const SPO2_OPTIONS = ["测不出", "未测出", "70", "75", "80", "85", "90", "92", "95", "98", "100"];
     const PUPIL_OPTIONS = ["", ...buildNumberOptions(1, 8, 0.5, "")];
     const CONSCIOUSNESS_OPTIONS = [
       ["清醒", "√"],
@@ -1414,7 +1421,7 @@
               ${field("床号", "patient.bedNo", "text", state.patient.bedNo)}
               ${field("姓名", "patient.name", "text", state.patient.name)}
               ${selectField("性别", "patient.sex", state.patient.sex, SEX_OPTIONS)}
-              ${field("年龄", "patient.age", "text", state.patient.age, "", "")}
+              ${field("年龄", "patient.age", "text", state.patient.age, "", "例：76")}
               ${field("ID号", "patient.idNo", "text", state.patient.idNo)}
               ${field("入院诊断", "patient.diagnosis", "text", state.patient.diagnosis, "full", "可选择或自定义填写", "diagnosisList")}
               ${field("联系电话/地址", "patient.contact", "text", state.patient.contact, "full")}
@@ -1549,7 +1556,7 @@
                 </div>
                 <div class="form-grid two three">
                   ${field("时间", `vitals.${index}.time`, "time", row.time)}
-                  ${field("体温", `vitals.${index}.temp`, "text", row.temp, "", "tempList")}
+                  ${field("体温", `vitals.${index}.temp`, "text", row.temp, "", "例：36.5℃", "tempList")}
                   ${field("脉搏", `vitals.${index}.pulse`, "text", row.pulse, "", "测不出/0", "pulseList")}
                   ${field("呼吸", `vitals.${index}.respiration`, "text", row.respiration, "", "辅助通气/无创面罩/0", "respList")}
                   ${field("SPO2", `vitals.${index}.spo2`, "text", row.spo2, "", "测不出或数字", "spo2List")}
@@ -1952,7 +1959,7 @@
       if (action === "add-consult") addRow("consults", defaultConsult());
       if (action === "add-exam") addRow("exams", defaultExam());
       if (action === "add-vital") addVital();
-      if (action === "add-record") addRow("records", defaultRecord());
+      if (action === "add-record") addRecordRow();
       if (action === "delete-row") deleteRow(button.dataset.collection, Number(button.dataset.index));
       if (action === "append-treatment") appendTreatment(Number(button.dataset.index));
       if (action === "append-medication") appendMedicationTemplate(Number(button.dataset.index));
@@ -1996,6 +2003,12 @@
       const previous = state.vitals[state.vitals.length - 1] || defaultVital();
       const next = defaultVital({ ...previous, time: nowTime(), temp: "", pulse: "", respiration: "", spo2: "" });
       addRow("vitals", next);
+    }
+
+    function addRecordRow() {
+      const previous = state.records[state.records.length - 1] || defaultRecord();
+      const nextTime = addMinutesToTime(previous.time, 10) || nowTime();
+      addRow("records", defaultRecord({ time: nextTime }));
     }
 
     function addRow(collection, row) {
@@ -3038,6 +3051,16 @@
     function nowTime() {
       const date = new Date();
       return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function addMinutesToTime(value, minutes) {
+      const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (!match) return "";
+      const hours = Number(match[1]);
+      const mins = Number(match[2]);
+      if (hours > 23 || mins > 59) return "";
+      const total = (hours * 60 + mins + minutes + 24 * 60) % (24 * 60);
+      return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
     }
 
     function toDatetimeLocal(date) {
