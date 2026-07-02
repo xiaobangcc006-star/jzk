@@ -387,6 +387,14 @@
       line-height: 1.45;
     }
 
+    .brief-textarea {
+      min-height: 300px;
+    }
+
+    .treatment-textarea {
+      min-height: 220px;
+    }
+
     .bp-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -564,6 +572,20 @@
       font-size: 12px;
       line-height: 1.45;
       word-break: break-all;
+    }
+
+    .template-group-actions,
+    .template-item-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .template-group-actions .small-btn,
+    .template-item-actions .small-btn {
+      min-height: 26px;
+      padding: 4px 7px;
     }
 
     .compact-nav {
@@ -1558,7 +1580,7 @@
             </div>
             <div class="field full" style="margin-top:10px">
               <label class="label" for="briefCondition">简要病情记录</label>
-              <textarea id="briefCondition" data-path="briefCondition" placeholder="按模板简要记录来院原因、入室状态、抢救处理概况。">${escapeHtml(state.briefCondition)}</textarea>
+              <textarea class="brief-textarea" id="briefCondition" data-path="briefCondition" placeholder="按模板简要记录来院原因、入室状态、抢救处理概况。">${escapeHtml(state.briefCondition)}</textarea>
             </div>
           </div>
         </section>
@@ -1724,7 +1746,7 @@
                   </div>
                   <div class="field full">
                     <label class="label" for="recordTreatment${index}">病情及处理</label>
-                    <textarea id="recordTreatment${index}" data-path="records.${index}.treatment" placeholder="按实际病情和医嘱记录处理过程。">${escapeHtml(row.treatment)}</textarea>
+                    <textarea class="treatment-textarea" id="recordTreatment${index}" data-path="records.${index}.treatment" placeholder="按实际病情和医嘱记录处理过程。">${escapeHtml(row.treatment)}</textarea>
                   </div>
                 </div>
               </div>
@@ -1786,7 +1808,10 @@
           ${items.length ? items.map((item, index) => `
             <div class="template-item">
               <div>${escapeHtml(item)}</div>
-              <button class="small-btn red" data-action="delete-template" data-template-type="${type}" data-index="${index}" type="button">删除</button>
+              <div class="template-item-actions">
+                <button class="small-btn blue" data-action="copy-template-item" data-template-type="${type}" data-index="${index}" type="button">复制</button>
+                <button class="small-btn red" data-action="delete-template" data-template-type="${type}" data-index="${index}" type="button">删除</button>
+              </div>
             </div>
           `).join("") : `<p class="helper">暂无自定义模板。</p>`}
         </div>
@@ -1975,6 +2000,45 @@
       showToast("已删除模板");
     }
 
+    async function copyTemplateItem(type, index) {
+      const library = getTemplateLibrary();
+      const value = library[type] && library[type][index] ? String(library[type][index]) : "";
+      if (!value) {
+        showToast("暂无可复制内容");
+        return;
+      }
+      const ok = await copyText(value);
+      showToast(ok ? "模板内容已复制" : "复制失败，请手动长按复制");
+    }
+
+    async function copyText(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (error) {
+        console.warn(error);
+      }
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        textarea.style.top = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        return ok;
+      } catch (error) {
+        console.warn(error);
+        return false;
+      }
+    }
+
     function saveCurrentTemplate(type) {
       const record = state.records[getActiveIndex("records")] || defaultRecord();
       const value = {
@@ -2068,6 +2132,7 @@
       if (action === "append-treatment") appendTreatment(Number(button.dataset.index));
       if (action === "append-medication") appendMedicationTemplate(Number(button.dataset.index));
       if (action === "add-template") addTemplateFromPanel();
+      if (action === "copy-template-item") copyTemplateItem(button.dataset.templateType, Number(button.dataset.index));
       if (action === "delete-template") deleteTemplate(button.dataset.templateType, Number(button.dataset.index));
       if (action === "save-current-template") saveCurrentTemplate(button.dataset.templateType);
       if (action === "prev-row") moveActiveRow(button.dataset.collection, -1);
@@ -2104,8 +2169,13 @@
     }
 
     function addVital() {
+      const first = state.vitals[0] || defaultVital();
       const previous = state.vitals[state.vitals.length - 1] || defaultVital();
-      const next = defaultVital({ time: addMinutesToTime(previous.time, 10) });
+      const next = defaultVital({
+        ...first,
+        time: addMinutesToTime(previous.time, 10) || "",
+        temp: ""
+      });
       addRow("vitals", next);
     }
 
@@ -2238,7 +2308,9 @@
       meta.lastClearedAll = clone(state);
       meta.lastEdit = null;
       meta.lastClearedStep = null;
+      const preservedTemplateLibrary = clone(getTemplateLibrary());
       state = defaultState();
+      state.templateLibrary = defaultTemplateLibrary(preservedTemplateLibrary);
       meta.activeVitalIndex = 0;
       meta.activeRecordIndex = 0;
       markDirty();
